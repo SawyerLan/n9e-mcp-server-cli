@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/n9e/n9e-mcp-server/internal/config"
 	"github.com/n9e/n9e-mcp-server/pkg/api"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
@@ -18,17 +19,14 @@ import (
 
 // ServerConfig represents MCP Server configuration
 type ServerConfig struct {
-	Version         string
-	Token           string
-	BaseURL         string
-	EnabledToolsets []string
-	ReadOnly        bool
+	Version string
+	Config  config.Config
 }
 
 // NewMCPServer creates MCP Server
 func NewMCPServer(cfg ServerConfig) (*mcp.Server, error) {
 	// Create N9e Client
-	n9eClient, err := client.NewClient(cfg.Token, cfg.BaseURL, fmt.Sprintf("n9e-mcp-server/%s", cfg.Version))
+	n9eClient, err := config.NewAPIClient(cfg.Config, fmt.Sprintf("n9e-mcp-server/%s", cfg.Version))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create n9e client: %w", err)
 	}
@@ -57,10 +55,10 @@ func NewMCPServer(cfg ServerConfig) (*mcp.Server, error) {
 	getClient := func(ctx context.Context) *client.Client {
 		return client.ClientFromContext(ctx)
 	}
-	toolsetGroup := api.DefaultToolsetGroup(getClient, cfg.ReadOnly)
+	toolsetGroup := api.DefaultToolsetGroup(getClient, cfg.Config.ReadOnly)
 
 	// Determine enabled toolsets
-	enabledToolsets := cfg.EnabledToolsets
+	enabledToolsets := cfg.Config.EnabledToolsets
 	if len(enabledToolsets) == 0 {
 		enabledToolsets = toolset.DefaultToolsets
 	}
@@ -78,12 +76,8 @@ func NewMCPServer(cfg ServerConfig) (*mcp.Server, error) {
 
 // StdioServerConfig represents stdio mode configuration
 type StdioServerConfig struct {
-	Version         string
-	Token           string
-	BaseURL         string
-	EnabledToolsets []string
-	ReadOnly        bool
-	LogFilePath     string
+	Version string
+	Config  config.Config
 }
 
 // RunStdioServer runs stdio mode server
@@ -94,9 +88,9 @@ func RunStdioServer(cfg StdioServerConfig) error {
 
 	// Configure logging (with file rotation support)
 	var logOutput io.Writer = os.Stderr
-	if cfg.LogFilePath != "" {
+	if cfg.Config.LogFilePath != "" {
 		logOutput = &lumberjack.Logger{
-			Filename:   cfg.LogFilePath,
+			Filename:   cfg.Config.LogFilePath,
 			MaxSize:    100, // MB, max file size
 			MaxBackups: 3,   // Number of old files to keep
 			MaxAge:     7,   // Days to keep
@@ -131,18 +125,15 @@ func RunStdioServer(cfg StdioServerConfig) error {
 
 	logger.Info("starting n9e-mcp-server",
 		"version", cfg.Version,
-		"base_url", cfg.BaseURL,
-		"read_only", cfg.ReadOnly,
-		"toolsets", cfg.EnabledToolsets,
+		"base_url", cfg.Config.BaseURL,
+		"read_only", cfg.Config.ReadOnly,
+		"toolsets", cfg.Config.EnabledToolsets,
 	)
 
 	// Create MCP Server
 	server, err := NewMCPServer(ServerConfig{
-		Version:         cfg.Version,
-		Token:           cfg.Token,
-		BaseURL:         cfg.BaseURL,
-		EnabledToolsets: cfg.EnabledToolsets,
-		ReadOnly:        cfg.ReadOnly,
+		Version: cfg.Version,
+		Config:  cfg.Config,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create MCP server: %w", err)

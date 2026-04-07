@@ -69,6 +69,18 @@ func ListActiveAlerts(ctx context.Context, c *client.Client, input ListActiveAle
 
 ## 5. 推荐迁移顺序
 
+如果目标是最快打通第一条 CLI 查询链路，可以先做一个更薄的例外切片：
+
+- `busi-groups list`
+
+原因：
+
+- 当前逻辑最短
+- 几乎不涉及复杂筛选条件
+- 适合作为 `pkg/app` 提取和 CLI 接线的第一块样板
+
+在这个最小切片跑通后，再按下面顺序扩大迁移范围：
+
 第一批建议迁移：
 
 - `alerts`

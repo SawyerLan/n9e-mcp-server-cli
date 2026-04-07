@@ -3,19 +3,18 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/n9e/n9e-mcp-server/internal"
-	"github.com/n9e/n9e-mcp-server/pkg/toolset"
+	"github.com/n9e/n9e-mcp-server/internal/config"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+	cfgViper = config.NewViper()
 )
 
 func main() {
@@ -51,24 +50,9 @@ var versionCmd = &cobra.Command{
 }
 
 func init() {
-	// Environment variable prefix
-	viper.SetEnvPrefix("N9E")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-
-	// Global flags
-	rootCmd.PersistentFlags().String("token", "", "Nightingale API token (env: N9E_TOKEN)")
-	rootCmd.PersistentFlags().String("base-url", "http://localhost:17000", "Nightingale API base URL (env: N9E_BASE_URL)")
-	rootCmd.PersistentFlags().StringSlice("toolsets", toolset.DefaultToolsets, "Enabled toolsets (env: N9E_TOOLSETS)")
-	rootCmd.PersistentFlags().Bool("read-only", false, "Read-only mode, disable write operations (env: N9E_READ_ONLY)")
-	rootCmd.PersistentFlags().String("log-file", "", "Log file path (default: stderr)")
-
-	// Bind to viper
-	viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("token"))
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("base-url"))
-	viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
-	viper.BindPFlag("read_only", rootCmd.PersistentFlags().Lookup("read-only"))
-	viper.BindPFlag("log_file", rootCmd.PersistentFlags().Lookup("log-file"))
+	if err := config.BindRuntimeFlags(rootCmd, cfgViper); err != nil {
+		panic(err)
+	}
 
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
@@ -76,17 +60,13 @@ func init() {
 }
 
 func runStdio(cmd *cobra.Command, args []string) error {
-	token := viper.GetString("token")
-	if token == "" {
+	cfg := config.Load(cfgViper)
+	if cfg.Token == "" {
 		return fmt.Errorf("N9E_TOKEN is required. Set it via --token flag or N9E_TOKEN environment variable")
 	}
 
 	return internal.RunStdioServer(internal.StdioServerConfig{
-		Version:         version,
-		Token:           token,
-		BaseURL:         viper.GetString("base_url"),
-		EnabledToolsets: viper.GetStringSlice("toolsets"),
-		ReadOnly:        viper.GetBool("read_only"),
-		LogFilePath:     viper.GetString("log_file"),
+		Version: version,
+		Config:  cfg,
 	})
 }

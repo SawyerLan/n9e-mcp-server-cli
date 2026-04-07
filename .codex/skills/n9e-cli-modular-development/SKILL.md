@@ -10,13 +10,31 @@ description: Guide modular development for the `n9e-mcp-server` project, especia
 Use this skill to develop CLI mode for `n9e-mcp-server` one module at a time without breaking existing MCP behavior.
 Treat the repo docs as the implementation map and always update the progress record after meaningful work.
 
+## Fast Start
+
+If the user says `start next` or clearly wants the next planned module:
+
+1. Read `doc/cli-mode-progress.md` first and use its quick-start section as the default execution target
+2. Read only the current module doc needed for that target
+3. Open only the 2-5 code files directly related to that module
+
+Do not start with broad repository scans such as `rg --files` unless the progress doc is stale or the target files are unknown.
+
+If `AGENTS.md` or this skill content was already pasted into the prompt, do not reread the same text from disk unless you need to verify that the on-disk copy has changed.
+
 ## Required Reading
 
-Before changing code, read these files in order:
+Before changing code, read these files in order, but keep the read minimal:
 
 1. `D:\new-code\n9e-mcp-server-cli\AGENTS.md`
 2. `D:\new-code\n9e-mcp-server-cli\doc\cli-mode-index.md`
 3. `D:\new-code\n9e-mcp-server-cli\doc\cli-mode-progress.md`
+
+Reading rules:
+
+- If `doc/cli-mode-progress.md` already names the next module and target command, do not read unrelated module docs
+- Read `doc/cli-mode-index.md` only when dependency order or module boundaries are unclear
+- Prefer reading the specific sections you need instead of the entire file when the document is long
 
 Then read only the module doc needed for the current task:
 
@@ -34,6 +52,7 @@ Then read only the module doc needed for the current task:
 
 Work on one module at a time.
 Do not mix large changes across config, shared business logic, CLI framework, and write commands unless the current module explicitly requires it.
+If the current task is a thin vertical slice, keep the change bounded to that slice instead of preloading future modules.
 
 ### 2. Preserve compatibility first
 
@@ -88,6 +107,8 @@ Record:
 - next recommended step
 - blockers or open decisions if any
 
+The progress record should also stay useful as a handoff document for the next agent. Prefer adding a short quick-start card over long narrative history.
+
 ### 7. Commit before handoff
 
 Unless the user explicitly says not to commit, finishing a meaningful implementation task includes creating a Git commit.
@@ -126,3 +147,14 @@ A module is only "completed" when all of the following are true:
 - mixing CLI rendering into shared business logic
 - implementing write commands before read paths and guards are stable
 - skipping progress updates after major development steps
+- reading unrelated module docs once the active module is already known
+- repo-wide file listing at task start when the likely touch points are already documented
+- repeated environment probing after a required tool is confirmed missing
+
+## Verification Discipline
+
+Before attempting Go verification:
+
+- run `command -v go` once
+- if missing, record the verification gap and stop probing for the toolchain unless the user explicitly asks you to debug the environment
+- do not spend time searching the filesystem for `go` or `gofmt` in normal development flow

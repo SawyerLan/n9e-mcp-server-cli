@@ -32,14 +32,27 @@ type Client struct {
 	userAgent  string
 }
 
+// Options controls client construction.
+type Options struct {
+	Timeout time.Duration
+}
+
 // NewClient creates a Nightingale API client
 func NewClient(token, baseURL, userAgent string) (*Client, error) {
+	return NewClientWithOptions(token, baseURL, userAgent, Options{})
+}
+
+// NewClientWithOptions creates a Nightingale API client with optional overrides.
+func NewClientWithOptions(token, baseURL, userAgent string, opts Options) (*Client, error) {
 	if token == "" {
 		return nil, fmt.Errorf("token is required")
 	}
 
 	if baseURL == "" {
 		baseURL = "http://localhost:17000"
+	}
+	if opts.Timeout <= 0 {
+		opts.Timeout = DefaultTimeout
 	}
 
 	parsedURL, err := url.Parse(baseURL)
@@ -49,7 +62,7 @@ func NewClient(token, baseURL, userAgent string) (*Client, error) {
 
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: DefaultTimeout,
+			Timeout: opts.Timeout,
 			Transport: &http.Transport{
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 10,
