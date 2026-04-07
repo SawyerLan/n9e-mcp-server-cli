@@ -88,13 +88,32 @@ Record:
 - next recommended step
 - blockers or open decisions if any
 
-### 7. Commit before handoff
+### 7. Live verification against real N9E
+
+After completing each module's code, **must** build the binary and run representative commands against the user's real N9E environment to verify correctness before committing.
+
+Steps:
+
+1. Build: `/home/corebug/.local/go/bin/go build -o /tmp/n9e-mcp-server ./cmd/n9e-mcp-server/`
+2. Run at least 2-3 representative CLI commands from the module, using environment variables:
+   ```
+   N9E_TOKEN="64b10b20-9b4e-4c77-aabf-7c8f4c331f49" \
+   N9E_BASE_URL="https://ops-n9e.lbxcn.com" \
+   /tmp/n9e-mcp-server cli <command> ...
+   ```
+3. Confirm the output is valid JSON and contains expected data
+4. If any command fails or returns unexpected results, fix the issue before committing
+5. Record the verification results (which commands were tested, data summary) in the progress doc change log
+
+Do not skip this step. If the N9E environment is unreachable, document the gap explicitly in the commit message.
+
+### 8. Commit before handoff
 
 Unless the user explicitly says not to commit, finishing a meaningful implementation task includes creating a Git commit.
 
 Rules:
 
-- commit after code/docs changes and progress updates are in place
+- commit after code/docs changes, progress updates, and live verification are in place
 - use a focused commit that contains only the intended task files
 - do not include unrelated dirty-worktree changes from the user
 - if verification is blocked, still commit the work and mention the testing gap clearly in the final message and, when useful, in the commit message
@@ -115,7 +134,8 @@ A module is only "completed" when all of the following are true:
 
 - code or docs for that module are in place
 - behavior matches the module doc
-- relevant verification was run or a clear testing gap was documented
+- `go build ./...` and `go test ./...` pass
+- live verification against real N9E (`ops-n9e.lbxcn.com`) was performed and results recorded
 - `doc/cli-mode-progress.md` was updated
 - a Git commit was created unless the user explicitly asked not to commit
 
