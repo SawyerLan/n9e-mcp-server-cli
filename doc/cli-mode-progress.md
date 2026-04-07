@@ -23,14 +23,14 @@
 
 给下一位 agent 的最小启动信息：
 
-- 当前建议模块：模块 06，写命令与安全守卫
-- 当前最小目标：参照已有只读命令模式，为 mutes 实现 create/update CLI 命令
+- 当前建议模块：模块 07，输出格式打磨、退出码体系、测试覆盖
+- 当前最小目标：参照 `doc/cli-mode/07-output-errors-testing.md`，完善 CLI 输出与退出码体系
 - 本轮优先阅读：
-  - `doc/cli-mode/06-write-commands-and-safety.md`
-  - `pkg/api/mutes.go`（写操作参考）
-  - `internal/cli/commands/mutes.go`（已有只读命令）
+  - `doc/cli-mode/07-output-errors-testing.md`
+  - `internal/cli/output/renderer.go`
+  - `internal/cli/commands/mutes.go`（写命令参考模式）
 - 本轮通常不需要先读：
-  - 模块 07 文档
+  - 模块 01-06 文档（已全部完成）
   - 整仓 `rg --files`
 - Go 工具链：已确认可用（`/home/corebug/.local/go/bin/go`）
 
@@ -53,7 +53,7 @@
 | 03 | `doc/cli-mode/03-shared-app-layer.md` | 已实现 | alerts/targets/users/mutes 共享逻辑均已抽取到 `pkg/app`，MCP handler 已适配 |
 | 04 | `doc/cli-mode/04-cli-framework.md` | 已实现 | CLI 骨架、CLIContext、output 层、busi-groups list 命令均已就绪，已通过实际环境验证 |
 | 05 | `doc/cli-mode/05-readonly-commands-v1.md` | 已实现 | alerts/targets/users/mutes 只读 CLI 命令已全部实现 |
-| 06 | `doc/cli-mode/06-write-commands-and-safety.md` | 未开始 | 文档已完成，写命令尚未实现 |
+| 06 | `doc/cli-mode/06-write-commands-and-safety.md` | 已实现 | mutes create/update 写命令 + 安全守卫已就绪 |
 | 07 | `doc/cli-mode/07-output-errors-testing.md` | 未开始 | 文档已完成，CLI 输出与退出码体系尚未接入 |
 
 说明：
@@ -67,7 +67,7 @@
 | --- | --- | --- |
 | A 基础可跑 | 已完成 | 配置、认证、client、CLI 骨架、首个命令均已就绪并通过验证 |
 | B 首批可用 | 已完成 | alerts/targets/users/mutes 只读命令已实现 |
-| C 具备写能力 | 未开始 | 写命令尚未实现 |
+| C 具备写能力 | 已完成 | mutes create/update + read-only 守卫 + --yes 确认 |
 | D 可交付 | 未开始 | 测试与 README 更新尚未开始 |
 
 ## 5. 已完成事项
@@ -98,17 +98,16 @@
 
 建议按下面顺序推进代码实现：
 
-1. 模块 06：写命令与安全守卫（mutes create/update 等）
-2. 模块 07：输出格式打磨、退出码体系、测试覆盖
+1. 模块 07：输出格式打磨、退出码体系、测试覆盖
 
 推荐下一个可执行编码目标：
 
-- 参照 `doc/cli-mode/06-write-commands-and-safety.md`，为 mutes 实现 `create` 和 `update` CLI 命令，加入 `--yes` 确认守卫
+- 参照 `doc/cli-mode/07-output-errors-testing.md`，完善 CLI 输出格式和退出码体系
 
 原因：
 
-- 只读命令已全部就绪，写命令是下一个自然步骤
-- mutes 已有 MCP 写操作实现，可直接提取共享逻辑
+- 模块 06 写命令已全部就绪
+- 输出与测试是最后的收尾模块
 
 ## 7. 阻塞与待决策
 
@@ -123,9 +122,26 @@
 待决策事项：
 
 - `table` 输出第一版覆盖哪些命令
-- 写命令第一版是否只支持必要 flag，还是同步支持结构化输入
+- 写命令后续是否需要 `--file` / `--json` 结构化输入方式
 
 ## 8. 变更记录
+
+### 2026-04-07 (模块 06)
+
+- 新增 `pkg/app/mutes.go`：CreateMuteInput/UpdateMuteInput 结构体、CreateMute/UpdateMute 共享逻辑（含校验）
+- 重构 `pkg/api/mutes.go`：MCP create/update handler 改为调用 `pkg/app` 共享层，移除重复的 Input 类型和内联逻辑
+- 新增写命令安全守卫：`checkWriteAllowed()`（read-only 检查）、`confirmAction()`（--yes 确认）
+- 新增 `internal/cli/commands/mutes.go`：mutes create、mutes update 命令
+  - 支持 `--duration` 快捷方式（如 `5m`、`2h`），自动计算 btime/etime
+  - 支持 `--tag key=value` 重复 flag 方式传入 tag 过滤器
+  - 支持 `--datasource-ids`、`--cate`、`--prod`、`--severities` 等核心 flag
+- `go build ./...` 和 `go test ./...` 全部通过
+- 实际 N9E 环境验证：
+  - `--read-only` 守卫：成功拦截写操作，输出 "write operation denied"
+  - `mutes create`：创建 5 分钟测试静默（group=37, id=59），返回正确 JSON
+  - `mutes get`：确认创建的静默数据正确（tags、cause、时间范围）
+  - `mutes update`：成功更新 cause 和 note，时间重置为 3 分钟
+  - `mutes get`：确认更新后数据已变更
 
 ### 2026-04-07 (模块 05)
 

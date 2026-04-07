@@ -2,12 +2,10 @@ package api
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/n9e/n9e-mcp-server/pkg/app"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
-	"github.com/n9e/n9e-mcp-server/pkg/types"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -19,42 +17,6 @@ type GetMuteInput struct {
 	MuteId  int64 `json:"mute_id"`
 }
 
-// CreateMuteInput represents create mute rule parameters
-type CreateMuteInput struct {
-	GroupId       int64                `json:"group_id"`
-	Note          string               `json:"note"`
-	Cate          string               `json:"cate,omitempty"`
-	Prod          string               `json:"prod,omitempty"`
-	DatasourceIds []int64              `json:"datasource_ids,omitempty"`
-	Cluster       string               `json:"cluster,omitempty"`
-	Tags          []types.TagFilter    `json:"tags,omitempty"`
-	Cause         string               `json:"cause"`
-	Btime         int64                `json:"btime"`
-	Etime         int64                `json:"etime"`
-	Severities    []int                `json:"severities,omitempty"`
-	Disabled      int                  `json:"disabled,omitempty"`
-	MuteTimeType  int                  `json:"mute_time_type,omitempty"`
-	PeriodicMutes []types.PeriodicMute `json:"periodic_mutes,omitempty"`
-}
-
-// UpdateMuteInput represents update mute rule parameters
-type UpdateMuteInput struct {
-	GroupId       int64                `json:"group_id"`
-	MuteId        int64                `json:"mute_id"`
-	Note          string               `json:"note"`
-	Cate          string               `json:"cate,omitempty"`
-	Prod          string               `json:"prod,omitempty"`
-	DatasourceIds []int64              `json:"datasource_ids,omitempty"`
-	Cluster       string               `json:"cluster,omitempty"`
-	Tags          []types.TagFilter    `json:"tags,omitempty"`
-	Cause         string               `json:"cause"`
-	Btime         int64                `json:"btime"`
-	Etime         int64                `json:"etime"`
-	Severities    []int                `json:"severities,omitempty"`
-	Disabled      int                  `json:"disabled,omitempty"`
-	MuteTimeType  int                  `json:"mute_time_type,omitempty"`
-	PeriodicMutes []types.PeriodicMute `json:"periodic_mutes,omitempty"`
-}
 
 // RegisterMutesToolset registers alert mutes toolset
 func RegisterMutesToolset(group *toolset.ToolsetGroup, getClient client.GetClientFunc) {
@@ -259,53 +221,18 @@ func createMuteTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input CreateMuteInput) (*mcp.CallToolResult, error) {
-			if input.GroupId <= 0 {
-				return toolset.NewToolResultError("group_id is required and must be positive"), nil
-			}
-			if input.Cause == "" {
-				return toolset.NewToolResultError("cause is required"), nil
-			}
-			if input.MuteTimeType == 0 {
-				if input.Btime <= 0 || input.Etime <= 0 {
-					return toolset.NewToolResultError("btime and etime are required for time range mode"), nil
-				}
-				if input.Btime >= input.Etime {
-					return toolset.NewToolResultError("btime must be less than etime"), nil
-				}
-			}
-
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.CreateMuteInput) (*mcp.CallToolResult, error) {
 			c := getClient(ctx)
 			if c == nil {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			body := map[string]any{
-				"note":           input.Note,
-				"cate":           input.Cate,
-				"prod":           input.Prod,
-				"datasource_ids": input.DatasourceIds,
-				"cluster":        input.Cluster,
-				"tags":           input.Tags,
-				"cause":          input.Cause,
-				"btime":          input.Btime,
-				"etime":          input.Etime,
-				"severities":     input.Severities,
-				"disabled":       input.Disabled,
-				"mute_time_type": input.MuteTimeType,
-				"periodic_mutes": input.PeriodicMutes,
-			}
-
-			path := fmt.Sprintf("/api/n9e/busi-group/%d/alert-mutes", input.GroupId)
-			result, err := client.DoPost[int64](c, ctx, path, body)
+			result, err := app.CreateMute(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
 
-			return toolset.MarshalResult(map[string]any{
-				"id":      result,
-				"message": "Alert mute created successfully",
-			}), nil
+			return toolset.MarshalResult(result), nil
 		}),
 	)
 }
@@ -405,56 +332,18 @@ func updateMuteTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input UpdateMuteInput) (*mcp.CallToolResult, error) {
-			if input.GroupId <= 0 {
-				return toolset.NewToolResultError("group_id is required and must be positive"), nil
-			}
-			if input.MuteId <= 0 {
-				return toolset.NewToolResultError("mute_id is required and must be positive"), nil
-			}
-			if input.Cause == "" {
-				return toolset.NewToolResultError("cause is required"), nil
-			}
-			if input.MuteTimeType == 0 {
-				if input.Btime <= 0 || input.Etime <= 0 {
-					return toolset.NewToolResultError("btime and etime are required for time range mode"), nil
-				}
-				if input.Btime >= input.Etime {
-					return toolset.NewToolResultError("btime must be less than etime"), nil
-				}
-			}
-
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.UpdateMuteInput) (*mcp.CallToolResult, error) {
 			c := getClient(ctx)
 			if c == nil {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			body := map[string]any{
-				"note":           input.Note,
-				"cate":           input.Cate,
-				"prod":           input.Prod,
-				"datasource_ids": input.DatasourceIds,
-				"cluster":        input.Cluster,
-				"tags":           input.Tags,
-				"cause":          input.Cause,
-				"btime":          input.Btime,
-				"etime":          input.Etime,
-				"severities":     input.Severities,
-				"disabled":       input.Disabled,
-				"mute_time_type": input.MuteTimeType,
-				"periodic_mutes": input.PeriodicMutes,
-			}
-
-			path := fmt.Sprintf("/api/n9e/busi-group/%d/alert-mute/%d", input.GroupId, input.MuteId)
-			_, err := client.DoPut[any](c, ctx, path, body)
+			result, err := app.UpdateMute(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
 
-			return toolset.MarshalResult(map[string]any{
-				"id":      input.MuteId,
-				"message": "Alert mute updated successfully",
-			}), nil
+			return toolset.MarshalResult(result), nil
 		}),
 	)
 }
