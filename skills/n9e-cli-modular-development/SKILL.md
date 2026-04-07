@@ -95,10 +95,8 @@ After completing each module's code, **must** build the binary and run represent
 Steps:
 
 1. Build: `/home/corebug/.local/go/bin/go build -o /tmp/n9e-mcp-server ./cmd/n9e-mcp-server/`
-2. Run at least 2-3 representative CLI commands from the module, using environment variables:
+2. Run at least 2-3 representative CLI commands from the module. `N9E_TOKEN` and `N9E_BASE_URL` are already set in the shell environment (via `~/.bashrc`), so just run:
    ```
-   N9E_TOKEN="64b10b20-9b4e-4c77-aabf-7c8f4c331f49" \
-   N9E_BASE_URL="https://ops-n9e.lbxcn.com" \
    /tmp/n9e-mcp-server cli <command> ...
    ```
 3. Confirm the output is valid JSON and contains expected data
@@ -135,7 +133,7 @@ A module is only "completed" when all of the following are true:
 - code or docs for that module are in place
 - behavior matches the module doc
 - `go build ./...` and `go test ./...` pass
-- live verification against real N9E (`ops-n9e.lbxcn.com`) was performed and results recorded
+- live verification against real N9E (using env vars from `~/.bashrc`) was performed and results recorded
 - `doc/cli-mode-progress.md` was updated
 - a Git commit was created unless the user explicitly asked not to commit
 
