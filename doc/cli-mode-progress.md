@@ -23,20 +23,17 @@
 
 给下一位 agent 的最小启动信息：
 
-- 当前建议模块：模块 03，共享业务层 `pkg/app`
-- 当前最小目标：先打通 `busi-groups list` 的共享逻辑抽取，不要同时展开完整 CLI 树
+- 当前建议模块：模块 04，CLI 框架骨架接入
+- 当前最小目标：接入 `cli` 子命令根骨架，实现 `n9e-mcp-server cli busi-groups list --output json`
 - 本轮优先阅读：
-  - `doc/cli-mode/03-shared-app-layer.md`
-  - `pkg/api/busi_groups.go`
-  - `pkg/types/types.go`
-  - `internal/config/config.go`
+  - `doc/cli-mode/04-cli-framework.md`
+  - `pkg/app/busi_groups.go`（已就绪的共享层）
+  - `internal/config/config.go`（CLI flag 绑定已就绪）
 - 本轮通常不需要先读：
   - 模块 05/06/07 文档
   - 整仓 `rg --files`
-  - 与 `busi-groups` 无关的 API 文件
-- 验证前置限制：
-  - 当前会话环境缺少 `go` / `gofmt`
-  - 正常开发流里不要反复搜索 Go 工具链位置，直接记录验证缺口即可
+  - `pkg/api/` 下非 busi_groups 文件
+- Go 工具链：已确认可用（`/home/corebug/.local/go/bin/go`）
 
 ## 2. 当前总体状态
 
@@ -46,7 +43,7 @@
 | CLI 模块化开发文档 | 已完成 | 已拆分为 01-07 模块文档 |
 | 项目级开发约束 | 已完成 | 根目录 `AGENTS.md` 已创建 |
 | 项目专用 skill | 已完成 | 已创建仓库内 `skills/n9e-cli-modular-development` |
-| CLI 代码实现 | 进行中 | 已启动模块 02，完成共享配置与 client 入口抽取 |
+| CLI 代码实现 | 进行中 | 模块 02 已完成，模块 03 busi-groups 切片已完成 |
 
 ## 3. 模块状态
 
@@ -54,7 +51,7 @@
 | --- | --- | --- | --- |
 | 01 | `doc/cli-mode/01-overview-and-roadmap.md` | 已完成 | 已明确 v1 范围、阶段与边界 |
 | 02 | `doc/cli-mode/02-config-auth-client.md` | 已实现 | 已新增 `internal/config` 并让 `stdio` 复用统一配置与 client 构造，待补跑 Go 测试 |
-| 03 | `doc/cli-mode/03-shared-app-layer.md` | 未开始 | 文档已完成，代码尚未抽取 `pkg/app` |
+| 03 | `doc/cli-mode/03-shared-app-layer.md` | 进行中 | busi-groups 共享逻辑已抽取到 `pkg/app`，其余领域待后续迁移 |
 | 04 | `doc/cli-mode/04-cli-framework.md` | 未开始 | 文档已完成，`cli` 子命令骨架尚未接入 |
 | 05 | `doc/cli-mode/05-readonly-commands-v1.md` | 未开始 | 文档已完成，只读命令尚未实现 |
 | 06 | `doc/cli-mode/06-write-commands-and-safety.md` | 未开始 | 文档已完成，写命令尚未实现 |
@@ -92,37 +89,41 @@
 - 将 `cmd/n9e-mcp-server` 与 `internal/server` 切换到共享配置和 client 构建路径
 - 为 `internal/config` 和 `pkg/client` 增加模块 02 相关测试
 - 当前环境缺少 `go` / `gofmt`，未能执行 `go test ./...`，需在具备 Go 工具链的环境补跑验证
-- 根据本次会话复盘，新增“快速启动卡片”并收紧下一步建议，减少重复读文档和无效检索
+- 根据本次会话复盘，新增”快速启动卡片”并收紧下一步建议，减少重复读文档和无效检索
+- 新增 `pkg/app` 包：`common.go`（SlicePage 通用分页）、`busi_groups.go`（ListBusiGroups 共享逻辑）
+- 重构 `pkg/api/busi_groups.go`，MCP handler 改为调用 `pkg/app.ListBusiGroups`
+- 新增 `pkg/app/common_test.go`，SlicePage 单元测试通过
+- 确认 Go 工具链可用，`go build ./...` 和 `go test ./...` 全部通过
 
 ## 6. 下一步建议
 
 建议按下面顺序推进代码实现：
 
-1. 模块 03：抽出 `pkg/app`，先迁移 `busi-groups` 查询链路
-2. 模块 04：接入 `cli` 根命令和基础骨架
-3. 模块 05：先实现 `busi-groups list --output json`
-4. 再迁移 `alerts` 与 `mutes` 相关共享逻辑
+1. 模块 04：接入 `cli` 子命令根骨架，实现 `busi-groups list --output json`
+2. 模块 03 继续：迁移 `alerts`、`mutes` 等共享逻辑到 `pkg/app`
+3. 模块 05：扩展只读命令覆盖面
 
 推荐第一个可执行编码目标：
 
-- 打通 `n9e-mcp-server cli busi-groups list --output json`
+- 接入 `internal/cli` 骨架，打通 `n9e-mcp-server cli busi-groups list --output json`
 
 原因：
 
-- 它是最短查询链路
-- 覆盖 CLI 入口、认证、共享层、输出四个关键点
+- `pkg/app` 已就绪，配置和 client 工厂已就绪
+- 只差 CLI 命令接线和 JSON 输出
 
 ## 7. 阻塞与待决策
 
-当前无硬性产品阻塞，但存在本地验证缺口：
+当前无硬性阻塞。
 
-- 当前会话环境未提供 `go` / `gofmt`，无法执行 `go test ./...` 或格式化检查
-- 模块 02 代码需在具备 Go 工具链的环境中补跑测试与 `stdio` 启动回归
+已确认事项：
 
-后续编码前需要持续确认的事项：
-
-- `pkg/app` 是否直接承载现有 input struct，还是同步迁移输入模型
+- Go 工具链可用，`go build ./...` 和 `go test ./...` 均通过
+- `pkg/app` 承载独立的 input struct（如 `ListBusiGroupsInput`），不复用 MCP 层定义
 - `--timeout` 已在 client 工厂层落地，后续只需决定何时接入 CLI flag
+
+待决策事项：
+
 - `table` 输出第一版覆盖哪些命令
 - 写命令第一版是否只支持必要 flag，还是同步支持结构化输入
 
@@ -138,3 +139,4 @@
 - 初始化 CLI 模式进度记录文档
 - 启动模块 02 代码实现，落地共享配置与 client 构建入口
 - 优化 handoff 文档结构，补充快速启动信息
+- 模块 03 首个切片完成：`pkg/app` busi-groups 共享逻辑抽取与 MCP 层适配

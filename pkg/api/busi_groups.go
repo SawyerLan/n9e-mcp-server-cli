@@ -3,19 +3,13 @@ package api
 import (
 	"context"
 
+	"github.com/n9e/n9e-mcp-server/pkg/app"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
-	"github.com/n9e/n9e-mcp-server/pkg/types"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
-
-// ListBusiGroupsInput represents business groups list query parameters
-type ListBusiGroupsInput struct {
-	Limit int `json:"limit,omitempty"`
-	Page  int `json:"p,omitempty"`
-}
 
 // RegisterBusiGroupsToolset registers business groups toolset
 func RegisterBusiGroupsToolset(group *toolset.ToolsetGroup, getClient client.GetClientFunc) {
@@ -51,19 +45,18 @@ func listBusiGroupsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListBusiGroupsInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListBusiGroupsInput) (*mcp.CallToolResult, error) {
 			c := getClient(ctx)
 			if c == nil {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			result, err := client.DoGet[[]types.BusiGroup](c, ctx, "/api/n9e/busi-groups", nil)
+			result, err := app.ListBusiGroups(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
 
-			items, total := toolset.SlicePage(result, input.Page, input.Limit)
-			return toolset.MarshalResult(types.PageResp[types.BusiGroup]{List: items, Total: total}), nil
+			return toolset.MarshalResult(result), nil
 		}),
 	)
 }
