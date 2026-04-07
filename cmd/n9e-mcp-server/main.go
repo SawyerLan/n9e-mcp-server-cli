@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/n9e/n9e-mcp-server/internal"
+	"github.com/n9e/n9e-mcp-server/internal/cli"
 	"github.com/n9e/n9e-mcp-server/internal/config"
 
 	"github.com/spf13/cobra"
@@ -57,6 +58,7 @@ func init() {
 	// Add subcommands
 	rootCmd.AddCommand(stdioCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(cli.NewCLICommand(cfgViper, version))
 }
 
 func runStdio(cmd *cobra.Command, args []string) error {

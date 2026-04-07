@@ -23,16 +23,15 @@
 
 给下一位 agent 的最小启动信息：
 
-- 当前建议模块：模块 04，CLI 框架骨架接入
-- 当前最小目标：接入 `cli` 子命令根骨架，实现 `n9e-mcp-server cli busi-groups list --output json`
+- 当前建议模块：模块 05，只读命令扩展（alerts、targets 等）
+- 当前最小目标：参照 `busi-groups list` 模式，实现 `alerts list` 或 `targets list` 命令
 - 本轮优先阅读：
-  - `doc/cli-mode/04-cli-framework.md`
-  - `pkg/app/busi_groups.go`（已就绪的共享层）
-  - `internal/config/config.go`（CLI flag 绑定已就绪）
+  - `doc/cli-mode/05-readonly-commands-v1.md`
+  - `pkg/api/` 下对应领域的 MCP handler（提取共享逻辑到 `pkg/app`）
+  - `internal/cli/commands/busi_groups.go`（参考模式）
 - 本轮通常不需要先读：
-  - 模块 05/06/07 文档
+  - 模块 06/07 文档
   - 整仓 `rg --files`
-  - `pkg/api/` 下非 busi_groups 文件
 - Go 工具链：已确认可用（`/home/corebug/.local/go/bin/go`）
 
 ## 2. 当前总体状态
@@ -43,7 +42,7 @@
 | CLI 模块化开发文档 | 已完成 | 已拆分为 01-07 模块文档 |
 | 项目级开发约束 | 已完成 | 根目录 `AGENTS.md` 已创建 |
 | 项目专用 skill | 已完成 | 已创建仓库内 `skills/n9e-cli-modular-development` |
-| CLI 代码实现 | 进行中 | 模块 02 已完成，模块 03 busi-groups 切片已完成 |
+| CLI 代码实现 | 进行中 | 模块 02-04 已完成，CLI 骨架与首个命令已就绪 |
 
 ## 3. 模块状态
 
@@ -52,7 +51,7 @@
 | 01 | `doc/cli-mode/01-overview-and-roadmap.md` | 已完成 | 已明确 v1 范围、阶段与边界 |
 | 02 | `doc/cli-mode/02-config-auth-client.md` | 已实现 | 已新增 `internal/config` 并让 `stdio` 复用统一配置与 client 构造，待补跑 Go 测试 |
 | 03 | `doc/cli-mode/03-shared-app-layer.md` | 进行中 | busi-groups 共享逻辑已抽取到 `pkg/app`，其余领域待后续迁移 |
-| 04 | `doc/cli-mode/04-cli-framework.md` | 未开始 | 文档已完成，`cli` 子命令骨架尚未接入 |
+| 04 | `doc/cli-mode/04-cli-framework.md` | 已实现 | CLI 骨架、CLIContext、output 层、busi-groups list 命令均已就绪，已通过实际环境验证 |
 | 05 | `doc/cli-mode/05-readonly-commands-v1.md` | 未开始 | 文档已完成，只读命令尚未实现 |
 | 06 | `doc/cli-mode/06-write-commands-and-safety.md` | 未开始 | 文档已完成，写命令尚未实现 |
 | 07 | `doc/cli-mode/07-output-errors-testing.md` | 未开始 | 文档已完成，CLI 输出与退出码体系尚未接入 |
@@ -66,7 +65,7 @@
 
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
-| A 基础可跑 | 进行中 | 配置、认证和 client 共享入口已就绪，CLI 骨架尚未接入 |
+| A 基础可跑 | 已完成 | 配置、认证、client、CLI 骨架、首个命令均已就绪并通过验证 |
 | B 首批可用 | 未开始 | 只读命令尚未实现 |
 | C 具备写能力 | 未开始 | 写命令尚未实现 |
 | D 可交付 | 未开始 | 测试与 README 更新尚未开始 |
@@ -99,18 +98,18 @@
 
 建议按下面顺序推进代码实现：
 
-1. 模块 04：接入 `cli` 子命令根骨架，实现 `busi-groups list --output json`
-2. 模块 03 继续：迁移 `alerts`、`mutes` 等共享逻辑到 `pkg/app`
-3. 模块 05：扩展只读命令覆盖面
+1. 模块 03 继续 + 模块 05：逐个领域迁移共享逻辑到 `pkg/app`，同时实现对应 CLI 只读命令
+2. 推荐首个目标：`alerts list` 或 `targets list`
+3. 模块 06：写命令与安全守卫
 
-推荐第一个可执行编码目标：
+推荐下一个可执行编码目标：
 
-- 接入 `internal/cli` 骨架，打通 `n9e-mcp-server cli busi-groups list --output json`
+- 参照 busi-groups 模式，将 alerts 共享逻辑抽取到 `pkg/app`，并实现 `cli alerts list`
 
 原因：
 
-- `pkg/app` 已就绪，配置和 client 工厂已就绪
-- 只差 CLI 命令接线和 JSON 输出
+- CLI 骨架和命令注册模式已就绪
+- 只需在 `pkg/app` 新增共享逻辑 + 在 `commands/` 新增命令文件
 
 ## 7. 阻塞与待决策
 
@@ -140,3 +139,10 @@
 - 启动模块 02 代码实现，落地共享配置与 client 构建入口
 - 优化 handoff 文档结构，补充快速启动信息
 - 模块 03 首个切片完成：`pkg/app` busi-groups 共享逻辑抽取与 MCP 层适配
+- 模块 04 完成：CLI 框架骨架接入
+  - 新增 `internal/cli/root.go`：CLI 根命令，绑定 CLI-only flags（output/timeout/yes/quiet）
+  - 新增 `internal/cli/commands/busi_groups.go`：CLIContext 定义 + busi-groups list 命令
+  - 新增 `internal/cli/output/renderer.go`：JSON 输出渲染层
+  - 在 `cmd/n9e-mcp-server/main.go` 注册 `cli` 子命令
+  - `go build ./...` 和 `go test ./...` 全部通过
+  - 已通过实际 N9E 环境验证：`cli busi-groups list` 正确返回数据并分页
