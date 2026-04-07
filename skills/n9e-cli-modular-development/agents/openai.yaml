@@ -1,4 +1,0 @@
-interface:
-  display_name: "N9E CLI Modular Development"
-  short_description: "Guide modular CLI development for the n9e-mcp-server project"
-  default_prompt: "Use $n9e-cli-modular-development to plan or implement the next module of CLI development in the n9e-mcp-server project."
