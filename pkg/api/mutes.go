@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/n9e/n9e-mcp-server/pkg/app"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
 	"github.com/n9e/n9e-mcp-server/pkg/types"
@@ -11,13 +12,6 @@ import (
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
-
-// ListMutesInput represents alert mutes list query parameters
-type ListMutesInput struct {
-	GroupId int64 `json:"group_id"`
-	Limit   int   `json:"limit,omitempty"`
-	Page    int   `json:"p,omitempty"`
-}
 
 // GetMuteInput represents get single mute rule parameters
 type GetMuteInput struct {
@@ -27,38 +21,38 @@ type GetMuteInput struct {
 
 // CreateMuteInput represents create mute rule parameters
 type CreateMuteInput struct {
-	GroupId       int64               `json:"group_id"`
-	Note          string              `json:"note"`
-	Cate          string              `json:"cate,omitempty"`
-	Prod          string              `json:"prod,omitempty"`
-	DatasourceIds []int64             `json:"datasource_ids,omitempty"`
-	Cluster       string              `json:"cluster,omitempty"`
-	Tags          []types.TagFilter   `json:"tags,omitempty"`
-	Cause         string              `json:"cause"`
-	Btime         int64               `json:"btime"`
-	Etime         int64               `json:"etime"`
-	Severities    []int               `json:"severities,omitempty"`
-	Disabled      int                 `json:"disabled,omitempty"`
-	MuteTimeType  int                 `json:"mute_time_type,omitempty"`
+	GroupId       int64                `json:"group_id"`
+	Note          string               `json:"note"`
+	Cate          string               `json:"cate,omitempty"`
+	Prod          string               `json:"prod,omitempty"`
+	DatasourceIds []int64              `json:"datasource_ids,omitempty"`
+	Cluster       string               `json:"cluster,omitempty"`
+	Tags          []types.TagFilter    `json:"tags,omitempty"`
+	Cause         string               `json:"cause"`
+	Btime         int64                `json:"btime"`
+	Etime         int64                `json:"etime"`
+	Severities    []int                `json:"severities,omitempty"`
+	Disabled      int                  `json:"disabled,omitempty"`
+	MuteTimeType  int                  `json:"mute_time_type,omitempty"`
 	PeriodicMutes []types.PeriodicMute `json:"periodic_mutes,omitempty"`
 }
 
 // UpdateMuteInput represents update mute rule parameters
 type UpdateMuteInput struct {
-	GroupId       int64               `json:"group_id"`
-	MuteId        int64               `json:"mute_id"`
-	Note          string              `json:"note"`
-	Cate          string              `json:"cate,omitempty"`
-	Prod          string              `json:"prod,omitempty"`
-	DatasourceIds []int64             `json:"datasource_ids,omitempty"`
-	Cluster       string              `json:"cluster,omitempty"`
-	Tags          []types.TagFilter   `json:"tags,omitempty"`
-	Cause         string              `json:"cause"`
-	Btime         int64               `json:"btime"`
-	Etime         int64               `json:"etime"`
-	Severities    []int               `json:"severities,omitempty"`
-	Disabled      int                 `json:"disabled,omitempty"`
-	MuteTimeType  int                 `json:"mute_time_type,omitempty"`
+	GroupId       int64                `json:"group_id"`
+	MuteId        int64                `json:"mute_id"`
+	Note          string               `json:"note"`
+	Cate          string               `json:"cate,omitempty"`
+	Prod          string               `json:"prod,omitempty"`
+	DatasourceIds []int64              `json:"datasource_ids,omitempty"`
+	Cluster       string               `json:"cluster,omitempty"`
+	Tags          []types.TagFilter    `json:"tags,omitempty"`
+	Cause         string               `json:"cause"`
+	Btime         int64                `json:"btime"`
+	Etime         int64                `json:"etime"`
+	Severities    []int                `json:"severities,omitempty"`
+	Disabled      int                  `json:"disabled,omitempty"`
+	MuteTimeType  int                  `json:"mute_time_type,omitempty"`
 	PeriodicMutes []types.PeriodicMute `json:"periodic_mutes,omitempty"`
 }
 
@@ -107,7 +101,7 @@ func listMutesTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListMutesInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListMutesInput) (*mcp.CallToolResult, error) {
 			if input.GroupId <= 0 {
 				return toolset.NewToolResultError("group_id is required and must be positive"), nil
 			}
@@ -117,14 +111,12 @@ func listMutesTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/busi-group/%d/alert-mutes", input.GroupId)
-			result, err := client.DoGet[[]types.AlertMute](c, ctx, path, nil)
+			result, err := app.ListMutes(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
 
-			items, total := toolset.SlicePage(result, input.Page, input.Limit)
-			return toolset.MarshalResult(types.PageResp[types.AlertMute]{List: items, Total: total}), nil
+			return toolset.MarshalResult(result), nil
 		}),
 	)
 }
@@ -166,8 +158,7 @@ func getMuteTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/busi-group/%d/alert-mute/%d", input.GroupId, input.MuteId)
-			result, err := client.DoGet[types.AlertMute](c, ctx, path, nil)
+			result, err := app.GetMute(ctx, c, input.GroupId, input.MuteId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -289,7 +280,6 @@ func createMuteTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			// Construct request body
 			body := map[string]any{
 				"note":           input.Note,
 				"cate":           input.Cate,
@@ -439,7 +429,6 @@ func updateMuteTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			// Construct request body
 			body := map[string]any{
 				"note":           input.Note,
 				"cate":           input.Cate,

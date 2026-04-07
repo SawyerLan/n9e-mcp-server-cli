@@ -48,6 +48,10 @@ func NewCLICommand(v *viper.Viper, version string) *cobra.Command {
 
 	// Register domain commands
 	cmd.AddCommand(commands.NewBusiGroupsCommand(buildCtx))
+	cmd.AddCommand(commands.NewAlertsCommand(buildCtx))
+	cmd.AddCommand(commands.NewTargetsCommand(buildCtx))
+	cmd.AddCommand(commands.NewUsersCommand(buildCtx))
+	cmd.AddCommand(commands.NewMutesCommand(buildCtx))
 
 	return cmd
 }

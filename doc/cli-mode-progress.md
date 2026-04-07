@@ -23,14 +23,14 @@
 
 给下一位 agent 的最小启动信息：
 
-- 当前建议模块：模块 05，只读命令扩展（alerts、targets 等）
-- 当前最小目标：参照 `busi-groups list` 模式，实现 `alerts list` 或 `targets list` 命令
+- 当前建议模块：模块 06，写命令与安全守卫
+- 当前最小目标：参照已有只读命令模式，为 mutes 实现 create/update CLI 命令
 - 本轮优先阅读：
-  - `doc/cli-mode/05-readonly-commands-v1.md`
-  - `pkg/api/` 下对应领域的 MCP handler（提取共享逻辑到 `pkg/app`）
-  - `internal/cli/commands/busi_groups.go`（参考模式）
+  - `doc/cli-mode/06-write-commands-and-safety.md`
+  - `pkg/api/mutes.go`（写操作参考）
+  - `internal/cli/commands/mutes.go`（已有只读命令）
 - 本轮通常不需要先读：
-  - 模块 06/07 文档
+  - 模块 07 文档
   - 整仓 `rg --files`
 - Go 工具链：已确认可用（`/home/corebug/.local/go/bin/go`）
 
@@ -42,7 +42,7 @@
 | CLI 模块化开发文档 | 已完成 | 已拆分为 01-07 模块文档 |
 | 项目级开发约束 | 已完成 | 根目录 `AGENTS.md` 已创建 |
 | 项目专用 skill | 已完成 | 已创建仓库内 `skills/n9e-cli-modular-development` |
-| CLI 代码实现 | 进行中 | 模块 02-04 已完成，CLI 骨架与首个命令已就绪 |
+| CLI 代码实现 | 进行中 | 模块 02-05 已完成，首批只读命令已就绪 |
 
 ## 3. 模块状态
 
@@ -50,9 +50,9 @@
 | --- | --- | --- | --- |
 | 01 | `doc/cli-mode/01-overview-and-roadmap.md` | 已完成 | 已明确 v1 范围、阶段与边界 |
 | 02 | `doc/cli-mode/02-config-auth-client.md` | 已实现 | 已新增 `internal/config` 并让 `stdio` 复用统一配置与 client 构造，待补跑 Go 测试 |
-| 03 | `doc/cli-mode/03-shared-app-layer.md` | 进行中 | busi-groups 共享逻辑已抽取到 `pkg/app`，其余领域待后续迁移 |
+| 03 | `doc/cli-mode/03-shared-app-layer.md` | 已实现 | alerts/targets/users/mutes 共享逻辑均已抽取到 `pkg/app`，MCP handler 已适配 |
 | 04 | `doc/cli-mode/04-cli-framework.md` | 已实现 | CLI 骨架、CLIContext、output 层、busi-groups list 命令均已就绪，已通过实际环境验证 |
-| 05 | `doc/cli-mode/05-readonly-commands-v1.md` | 未开始 | 文档已完成，只读命令尚未实现 |
+| 05 | `doc/cli-mode/05-readonly-commands-v1.md` | 已实现 | alerts/targets/users/mutes 只读 CLI 命令已全部实现 |
 | 06 | `doc/cli-mode/06-write-commands-and-safety.md` | 未开始 | 文档已完成，写命令尚未实现 |
 | 07 | `doc/cli-mode/07-output-errors-testing.md` | 未开始 | 文档已完成，CLI 输出与退出码体系尚未接入 |
 
@@ -66,7 +66,7 @@
 | 里程碑 | 状态 | 说明 |
 | --- | --- | --- |
 | A 基础可跑 | 已完成 | 配置、认证、client、CLI 骨架、首个命令均已就绪并通过验证 |
-| B 首批可用 | 未开始 | 只读命令尚未实现 |
+| B 首批可用 | 已完成 | alerts/targets/users/mutes 只读命令已实现 |
 | C 具备写能力 | 未开始 | 写命令尚未实现 |
 | D 可交付 | 未开始 | 测试与 README 更新尚未开始 |
 
@@ -98,18 +98,17 @@
 
 建议按下面顺序推进代码实现：
 
-1. 模块 03 继续 + 模块 05：逐个领域迁移共享逻辑到 `pkg/app`，同时实现对应 CLI 只读命令
-2. 推荐首个目标：`alerts list` 或 `targets list`
-3. 模块 06：写命令与安全守卫
+1. 模块 06：写命令与安全守卫（mutes create/update 等）
+2. 模块 07：输出格式打磨、退出码体系、测试覆盖
 
 推荐下一个可执行编码目标：
 
-- 参照 busi-groups 模式，将 alerts 共享逻辑抽取到 `pkg/app`，并实现 `cli alerts list`
+- 参照 `doc/cli-mode/06-write-commands-and-safety.md`，为 mutes 实现 `create` 和 `update` CLI 命令，加入 `--yes` 确认守卫
 
 原因：
 
-- CLI 骨架和命令注册模式已就绪
-- 只需在 `pkg/app` 新增共享逻辑 + 在 `commands/` 新增命令文件
+- 只读命令已全部就绪，写命令是下一个自然步骤
+- mutes 已有 MCP 写操作实现，可直接提取共享逻辑
 
 ## 7. 阻塞与待决策
 
@@ -128,7 +127,21 @@
 
 ## 8. 变更记录
 
-### 2026-04-07
+### 2026-04-07 (模块 05)
+
+- 新增 `pkg/app/alerts.go`：ListActiveAlerts、ListHistoryAlerts、GetActiveAlert、GetHistoryAlert、ListAlertRules、GetAlertRule 共享逻辑
+- 新增 `pkg/app/targets.go`：ListTargets 共享逻辑
+- 新增 `pkg/app/users.go`：ListUsers、GetUser、ListUserGroups、GetUserGroup 共享逻辑
+- 新增 `pkg/app/mutes.go`：ListMutes、GetMute 共享逻辑
+- 重构 `pkg/api/alerts.go`、`pkg/api/targets.go`、`pkg/api/users.go`、`pkg/api/mutes.go`，MCP handler 改为调用 `pkg/app` 共享层
+- 新增 `internal/cli/commands/alerts.go`：alerts active list/get、alerts history list/get、alerts rules list/get 命令
+- 新增 `internal/cli/commands/targets.go`：targets list 命令
+- 新增 `internal/cli/commands/users.go`：users list/get、users groups list/get 命令
+- 新增 `internal/cli/commands/mutes.go`：mutes list/get 命令
+- 在 `internal/cli/root.go` 注册所有新命令
+- `go build ./...` 和 `go test ./...` 全部通过
+
+### 2026-04-07 (模块 02-04)
 
 - 初始化 CLI 模式文档体系
 - 初始化项目级开发约束

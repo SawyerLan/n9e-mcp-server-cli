@@ -2,34 +2,18 @@ package api
 
 import (
 	"context"
-	"fmt"
-	"net/url"
-	"strconv"
 
+	"github.com/n9e/n9e-mcp-server/pkg/app"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
-	"github.com/n9e/n9e-mcp-server/pkg/types"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// ListUsersInput represents users list query parameters
-type ListUsersInput struct {
-	Query string `json:"query,omitempty"`
-	Limit int    `json:"limit,omitempty"`
-	Page  int    `json:"p,omitempty"`
-}
-
 // GetUserInput represents single user query parameters
 type GetUserInput struct {
 	UserId int64 `json:"id"`
-}
-
-// ListUserGroupsInput represents user groups list query parameters
-type ListUserGroupsInput struct {
-	Query string `json:"query,omitempty"`
-	Limit int    `json:"limit,omitempty"`
 }
 
 // GetUserGroupInput represents single user group query parameters
@@ -78,24 +62,13 @@ func listUsersTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListUsersInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListUsersInput) (*mcp.CallToolResult, error) {
 			c := getClient(ctx)
 			if c == nil {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			params := url.Values{}
-			if input.Query != "" {
-				params.Set("query", input.Query)
-			}
-			if input.Limit > 0 {
-				params.Set("limit", strconv.Itoa(input.Limit))
-			}
-			if input.Page > 0 {
-				params.Set("p", strconv.Itoa(input.Page))
-			}
-
-			result, err := client.DoGet[types.PageResp[types.User]](c, ctx, "/api/n9e/users", params)
+			result, err := app.ListUsers(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -135,8 +108,7 @@ func getUserTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/user/%d/profile", input.UserId)
-			result, err := client.DoGet[types.User](c, ctx, path, nil)
+			result, err := app.GetUser(ctx, c, input.UserId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -169,21 +141,13 @@ func listUserGroupsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListUserGroupsInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListUserGroupsInput) (*mcp.CallToolResult, error) {
 			c := getClient(ctx)
 			if c == nil {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			params := url.Values{}
-			if input.Query != "" {
-				params.Set("query", input.Query)
-			}
-			if input.Limit > 0 {
-				params.Set("limit", strconv.Itoa(input.Limit))
-			}
-
-			result, err := client.DoGet[[]types.UserGroup](c, ctx, "/api/n9e/user-groups", params)
+			result, err := app.ListUserGroups(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -223,8 +187,7 @@ func getUserGroupTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/user-group/%d", input.GroupId)
-			result, err := client.DoGet[types.UserGroupDetail](c, ctx, path, nil)
+			result, err := app.GetUserGroup(ctx, c, input.GroupId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}

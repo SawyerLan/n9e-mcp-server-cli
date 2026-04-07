@@ -3,61 +3,18 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strconv"
 
+	"github.com/n9e/n9e-mcp-server/pkg/app"
 	"github.com/n9e/n9e-mcp-server/pkg/client"
 	"github.com/n9e/n9e-mcp-server/pkg/toolset"
-	"github.com/n9e/n9e-mcp-server/pkg/types"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// ListActiveAlertsInput represents active alerts query parameters
-type ListActiveAlertsInput struct {
-	Hours         int64  `json:"hours,omitempty"`
-	Stime         int64  `json:"stime,omitempty"`
-	Etime         int64  `json:"etime,omitempty"`
-	Severity      string `json:"severity,omitempty"`
-	Query         string `json:"query,omitempty"`
-	Cate          string `json:"cate,omitempty"`
-	RuleProds     string `json:"rule_prods,omitempty"`
-	DatasourceIds string `json:"datasource_ids,omitempty"`
-	RuleId        int64  `json:"rid,omitempty"`
-	EventIds      string `json:"event_ids,omitempty"`
-	BusiGroupId   int64  `json:"bgid,omitempty"`
-	MyGroups      bool   `json:"my_groups,omitempty"`
-	Limit         int    `json:"limit,omitempty"`
-	Page          int    `json:"p,omitempty"`
-}
-
-// ListHistoryAlertsInput represents historical alerts query parameters
-type ListHistoryAlertsInput struct {
-	Hours         int64  `json:"hours,omitempty"`
-	Stime         int64  `json:"stime,omitempty"`
-	Etime         int64  `json:"etime,omitempty"`
-	Severity      int    `json:"severity,omitempty"`
-	IsRecovered   int    `json:"is_recovered,omitempty"`
-	Query         string `json:"query,omitempty"`
-	Cate          string `json:"cate,omitempty"`
-	RuleProds     string `json:"rule_prods,omitempty"`
-	DatasourceIds string `json:"datasource_ids,omitempty"`
-	BusiGroupId   int64  `json:"bgid,omitempty"`
-	Limit         int    `json:"limit,omitempty"`
-	Page          int    `json:"p,omitempty"`
-}
-
 // GetAlertInput represents single alert query parameters
 type GetAlertInput struct {
 	EventId int64 `json:"eid"`
-}
-
-// ListAlertRulesInput represents alert rules list query parameters
-type ListAlertRulesInput struct {
-	GroupId int64 `json:"group_id"`
-	Limit   int   `json:"limit,omitempty"`
-	Page    int   `json:"p,omitempty"`
 }
 
 // GetAlertRuleInput represents single alert rule query parameters
@@ -145,7 +102,7 @@ func listActiveAlertsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListActiveAlertsInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListActiveAlertsInput) (*mcp.CallToolResult, error) {
 			// Parameter validation
 			if err := toolset.ValidateTimeRange(input.Hours, input.Stime, input.Etime); err != nil {
 				return toolset.NewToolResultError(fmt.Sprintf("invalid input: %v", err)), nil
@@ -162,46 +119,7 @@ func listActiveAlertsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			// Build query parameters
-			params := url.Values{}
-			if input.Hours > 0 {
-				params.Set("hours", strconv.FormatInt(input.Hours, 10))
-			}
-			if input.Stime > 0 {
-				params.Set("stime", strconv.FormatInt(input.Stime, 10))
-			}
-			if input.Etime > 0 {
-				params.Set("etime", strconv.FormatInt(input.Etime, 10))
-			}
-			if input.Severity != "" {
-				params.Set("severity", input.Severity)
-			}
-			if input.Query != "" {
-				params.Set("query", input.Query)
-			}
-			if input.Cate != "" {
-				params.Set("cate", input.Cate)
-			}
-			if input.RuleProds != "" {
-				params.Set("rule_prods", input.RuleProds)
-			}
-			if input.DatasourceIds != "" {
-				params.Set("datasource_ids", input.DatasourceIds)
-			}
-			if input.RuleId > 0 {
-				params.Set("rid", strconv.FormatInt(input.RuleId, 10))
-			}
-			if input.BusiGroupId > 0 {
-				params.Set("bgid", strconv.FormatInt(input.BusiGroupId, 10))
-			}
-			if input.Limit > 0 {
-				params.Set("limit", strconv.Itoa(input.Limit))
-			}
-			if input.Page > 0 {
-				params.Set("p", strconv.Itoa(input.Page))
-			}
-
-			result, err := client.DoGet[types.PageResp[types.AlertCurEvent]](c, ctx, "/api/n9e/alert-cur-events/list", params)
+			result, err := app.ListActiveAlerts(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -241,8 +159,7 @@ func getActiveAlertTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/alert-cur-event/%d", input.EventId)
-			result, err := client.DoGet[types.AlertCurEvent](c, ctx, path, nil)
+			result, err := app.GetActiveAlert(ctx, c, input.EventId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -315,7 +232,7 @@ func listHistoryAlertsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListHistoryAlertsInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListHistoryAlertsInput) (*mcp.CallToolResult, error) {
 			if err := toolset.ValidateTimeRange(input.Hours, input.Stime, input.Etime); err != nil {
 				return toolset.NewToolResultError(fmt.Sprintf("invalid input: %v", err)), nil
 			}
@@ -328,45 +245,7 @@ func listHistoryAlertsTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			params := url.Values{}
-			if input.Hours > 0 {
-				params.Set("hours", strconv.FormatInt(input.Hours, 10))
-			}
-			if input.Stime > 0 {
-				params.Set("stime", strconv.FormatInt(input.Stime, 10))
-			}
-			if input.Etime > 0 {
-				params.Set("etime", strconv.FormatInt(input.Etime, 10))
-			}
-			if input.Severity != 0 {
-				params.Set("severity", strconv.Itoa(input.Severity))
-			}
-			if input.IsRecovered != 0 {
-				params.Set("is_recovered", strconv.Itoa(input.IsRecovered))
-			}
-			if input.Query != "" {
-				params.Set("query", input.Query)
-			}
-			if input.Cate != "" {
-				params.Set("cate", input.Cate)
-			}
-			if input.RuleProds != "" {
-				params.Set("rule_prods", input.RuleProds)
-			}
-			if input.DatasourceIds != "" {
-				params.Set("datasource_ids", input.DatasourceIds)
-			}
-			if input.BusiGroupId > 0 {
-				params.Set("bgid", strconv.FormatInt(input.BusiGroupId, 10))
-			}
-			if input.Limit > 0 {
-				params.Set("limit", strconv.Itoa(input.Limit))
-			}
-			if input.Page > 0 {
-				params.Set("p", strconv.Itoa(input.Page))
-			}
-
-			result, err := client.DoGet[types.PageResp[types.AlertHisEvent]](c, ctx, "/api/n9e/alert-his-events/list", params)
+			result, err := app.ListHistoryAlerts(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -406,8 +285,7 @@ func getHistoryAlertTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/alert-his-event/%d", input.EventId)
-			result, err := client.DoGet[types.AlertHisEvent](c, ctx, path, nil)
+			result, err := app.GetHistoryAlert(ctx, c, input.EventId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
@@ -445,7 +323,7 @@ func listAlertRulesTool(getClient client.GetClientFunc) toolset.ServerTool {
 				},
 			},
 		},
-		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input ListAlertRulesInput) (*mcp.CallToolResult, error) {
+		toolset.MakeToolHandler(func(ctx context.Context, req *mcp.CallToolRequest, input app.ListAlertRulesInput) (*mcp.CallToolResult, error) {
 			if input.GroupId <= 0 {
 				return toolset.NewToolResultError("group_id is required and must be positive"), nil
 			}
@@ -455,14 +333,12 @@ func listAlertRulesTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/busi-group/%d/alert-rules", input.GroupId)
-			result, err := client.DoGet[[]types.AlertRule](c, ctx, path, nil)
+			result, err := app.ListAlertRules(ctx, c, input)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
 
-			items, total := toolset.SlicePage(result, input.Page, input.Limit)
-			return toolset.MarshalResult(types.PageResp[types.AlertRule]{List: items, Total: total}), nil
+			return toolset.MarshalResult(result), nil
 		}),
 	)
 }
@@ -497,8 +373,7 @@ func getAlertRuleTool(getClient client.GetClientFunc) toolset.ServerTool {
 				return toolset.NewToolResultError("failed to get n9e client from context"), nil
 			}
 
-			path := fmt.Sprintf("/api/n9e/alert-rule/%d", input.RuleId)
-			result, err := client.DoGet[types.AlertRule](c, ctx, path, nil)
+			result, err := app.GetAlertRule(ctx, c, input.RuleId)
 			if err != nil {
 				return toolset.NewToolResultError(err.Error()), nil
 			}
